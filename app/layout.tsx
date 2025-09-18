@@ -10,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "TradeFlow",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Timesheet Manager",
+  description: "A simple timesheet manager built with Next.js, Tailwind CSS, and Radix UI.",
 };
 
 const geistSans = Geist({

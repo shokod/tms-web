@@ -155,7 +155,7 @@ const AddEntryDialog = () => {
               </Label>
               <Input
                 id="invoiceNo"
-                placeholder="RSLITE-TN 001 BTA"
+                placeholder="RSLITE-TN 001"
                 value={formData.invoiceNo}
                 onChange={(e) => handleInputChange('invoiceNo', e.target.value)}
                 className={errors.invoiceNo ? 'border-red-500' : 'border-gray-200'}
