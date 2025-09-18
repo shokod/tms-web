@@ -35,8 +35,8 @@ const navItems = [
     icon: FolderKanban,
   },
   {
-    title: 'People',
-    href: '/people',
+    title: 'Employees',
+    href: '/employees',
     icon: Users,
   },
   {
