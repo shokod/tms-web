@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Mail, Lock } from "lucide-react";
 
 export function SignUpForm({
   className,
@@ -44,7 +45,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;
@@ -57,64 +58,113 @@ export function SignUpForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
-              </Button>
+    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-gray-50 dark:bg-gray-900">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col gap-8">
+          
+          <div className="flex justify-center">
+            <div className="text-5xl animate-bounce">
+              🚀
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
-              </Link>
+          </div>
+
+          <div className={cn("flex flex-col gap-6", className)} {...props}>
+            <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
+              <CardHeader className="text-center space-y-3 pb-6">
+                <CardTitle className="text-2xl font-medium text-gray-900 dark:text-gray-100">
+                  Create your account
+                </CardTitle>
+                <CardDescription className="text-gray-600 dark:text-gray-400">
+                  Enter your details below to create your new account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignUp}>
+                  <div className="flex flex-col gap-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
+                        Email
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="name@example.com"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="pl-10 border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
+                        Password
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="password"
+                          type="password"
+                          required
+                          value={password}
+                           placeholder="********"
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="pl-10 border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="repeat-password" className="text-gray-700 dark:text-gray-300">
+                        Repeat Password
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="repeat-password"
+                          type="password"
+                          required
+                          value={repeatPassword}
+                          onChange={(e) => setRepeatPassword(e.target.value)}
+                          className="pl-10 border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500"
+                        />
+                      </div>
+                    </div>
+                    {error && (
+                      <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+                        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                      </div>
+                    )}
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900" 
+                      disabled={isLoading}
+                    >
+                      {isLoading ? "Creating account..." : "Sign up"}
+                    </Button>
+                  </div>
+                  <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+                    Already have an account?{" "}
+                    <Link
+                      href="/auth/login"
+                      className="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300 underline underline-offset-4 transition-colors"
+                    >
+                      Login
+                    </Link>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Join us today and get started!
+              </span>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

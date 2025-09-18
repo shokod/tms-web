@@ -1,4 +1,6 @@
 @tailwind base;
+
+@custom-variant dark (&:is(.dark *));
 @tailwind components;
 @tailwind utilities;
 
@@ -29,6 +31,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --spacing-8: 2rem;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -64,5 +67,136 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .calendar-base {
+    --cell-size: 2.5rem;
+    padding: 1rem;
+    width: fit-content;
+  }
+  
+  .calendar-base table {
+    border-collapse: separate;
+    border-spacing: 0.25rem;
+  }
+  
+  .calendar-base thead th,
+  .calendar-base tbody td {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    text-align: center;
+    padding: 0;
+  }
+
+  .calendar-base button {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.375rem;
+  }
+
+  /* Month/Year Navigation Styles */
+  .calendar-base header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .calendar-base [data-slot="month-dropdown"],
+  .calendar-base [data-slot="year-dropdown"] {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s;
+  }
+
+  .calendar-base [data-slot="month-dropdown"]:hover,
+  .calendar-base [data-slot="year-dropdown"]:hover {
+    background-color: var(--accent);
+  }
+
+  .calendar-base nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .calendar-base nav button {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    color: var(--foreground);
+    background: transparent;
+    transition: background-color 0.2s;
+  }
+
+  .calendar-base nav button:hover {
+    background-color: var(--accent);
+  }
+
+  .calendar-base nav button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .calendar-base nav button svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Week Day Headers */
+  .calendar-base [role="row"]:first-child {
+    font-weight: 500;
+    color: var(--muted-foreground);
   }
 }
