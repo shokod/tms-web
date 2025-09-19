@@ -209,64 +209,7 @@ const TimesheetPage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Left Sidebar */}
-      {/* <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">T</span>
-            </div>
-            <span className="font-semibold text-lg">Timesheet</span>
-          </div>
-        </div>
-
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input 
-              placeholder="Search..." 
-              className="pl-10 bg-gray-50 border-gray-200"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 p-4">
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.label}
-                  variant={item.active ? "secondary" : "ghost"}
-                  className={`w-full justify-start text-sm ${
-                    item.active 
-                      ? "bg-gray-100 text-gray-900" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                  size="sm"
-                >
-                  <Icon className="mr-3 h-4 w-4" />
-                  {item.label}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-gray-200 text-gray-600">{user.avatar}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.position}</p>
-            </div>
-          </div>
-        </div>
-      </div> */}
+      
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -274,7 +217,7 @@ const TimesheetPage = () => {
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
                 <Clock className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -380,7 +323,7 @@ const TimesheetPage = () => {
                         />
                       </th>
                       <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        <Button variant="ghost" size="sm" className="p-0 h-auto font-medium hover:bg-transparent">
+                        <Button variant="ghost" size="sm" className="p-0 h-auto items-center  font-medium hover:bg-transparent">
                           ID
                           <ArrowUpDown className="ml-1 h-3 w-3" />
                         </Button>
@@ -414,13 +357,17 @@ const TimesheetPage = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {currentEntries.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-4">
+                      <tr 
+                        key={entry.id} 
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => window.location.href = `/timesheets/${entry.id}`}
+                      >
+                        {/* <td className="p-4">
                           <Checkbox
                             checked={selectedEntries.includes(entry.id)}
                             onCheckedChange={(checked) => handleSelectEntry(entry.id, checked as boolean)}
                           />
-                        </td>
+                        </td> */}
                         <td className="p-4">
                           <span className="text-sm font-medium text-gray-900">{entry.id}</span>
                         </td>
