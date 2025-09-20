@@ -1,0 +1,330 @@
+"use client";
+
+import React, { useState } from 'react';
+import { DailyView } from './components/DailyView';
+import { WeeklyView } from './components/WeeklyView';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  Plus, 
+  Filter,
+  Calendar,
+  Clock,
+  MoreHorizontal,
+  Edit2,
+  Trash2,
+  Copy,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown
+} from "lucide-react";
+import { TimeEntry } from './types';
+
+const TimesheetPage = () => {
+  // State management
+  const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState<'list' | 'daily' | 'weekly'>('list');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Sample data
+  const allEntries = [
+    { 
+      id: "01",
+      invoice: "RSLITE-TN 001 BTA",
+      contact: "John Smith",
+      email: "john@company.com",
+      date: "2024-12-15",
+      startTime: "09:00",
+      endTime: "17:00",
+      hours: 8.0,
+      activity: "User authentication system development",
+      description: "Implementing OAuth integration",
+      project: "Authentication System",
+      projectId: "AUTH-01",
+      status: "approved",
+      entryType: "regular" as const,
+      avatar: "JS"
+    },
+    // Add more entries as needed
+  ];
+
+  // Filtering and sorting logic
+  const filteredEntries = allEntries
+    .filter(entry => {
+      const matchesSearch = entry.activity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.invoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.project.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter = filterStatus === 'all' || entry.status === filterStatus;
+      return matchesSearch && matchesFilter;
+    })
+    .sort((a, b) => {
+      const aVal = a[sortField as keyof typeof a];
+      const bVal = b[sortField as keyof typeof b];
+      return sortOrder === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEntries = filteredEntries.slice(startIndex, endIndex);
+
+  // UI Helpers
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      approved: { color: "bg-green-100 text-green-800", label: "Approved" },
+      pending: { color: "bg-yellow-100 text-yellow-800", label: "Pending" },
+      draft: { color: "bg-gray-100 text-gray-800", label: "Draft" }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig];
+    return (
+      <Badge className={`${config.color} border-0`}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <div className="flex-1 p-6">
+      {/* View Mode Selection */}
+      <div className="mb-6">
+        <div className="flex space-x-4 border-b">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-2 -mb-px ${
+              viewMode === 'list'
+                ? 'border-b-2 border-red-600 text-red-600 font-medium'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            List View
+          </button>
+          <button
+            onClick={() => setViewMode('daily')}
+            className={`px-4 py-2 -mb-px ${
+              viewMode === 'daily'
+                ? 'border-b-2 border-red-600 text-red-600 font-medium'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Daily View
+          </button>
+          <button
+            onClick={() => setViewMode('weekly')}
+            className={`px-4 py-2 -mb-px ${
+              viewMode === 'weekly'
+                ? 'border-b-2 border-red-600 text-red-600 font-medium'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Weekly View
+          </button>
+        </div>
+      </div>
+
+      <Card className="border-0 shadow-sm">
+        {/* Header Actions */}
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Entry
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <CardContent className={viewMode === 'list' ? 'p-0' : 'p-6'}>
+          {viewMode === 'list' && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  {/* Table Header */}
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        <Checkbox
+                          checked={selectedEntries.length === currentEntries.length}
+                        />
+                      </th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">ID</th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Project</th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Hours</th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                      <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Activity</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  
+                  {/* Table Body */}
+                  <tbody className="divide-y divide-gray-100">
+                    {currentEntries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-gray-50">
+                        <td className="p-4">
+                          <Checkbox
+                            checked={selectedEntries.includes(entry.id)}
+                          />
+                        </td>
+                        <td className="p-4">{entry.id}</td>
+                        <td className="p-4">{formatDate(entry.date)}</td>
+                        <td className="p-4">{entry.project}</td>
+                        <td className="p-4">{entry.hours}h</td>
+                        <td className="p-4">{getStatusBadge(entry.status)}</td>
+                        <td className="p-4 max-w-xs">
+                          <div className="truncate">{entry.activity}</div>
+                        </td>
+                        <td className="p-4">
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rows per page:</span>
+                  <Select 
+                    value={String(itemsPerPage)}
+                    onValueChange={(value) => setItemsPerPage(Number(value))}
+                  >
+                    <SelectTrigger className="w-16">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'daily' && (
+            <DailyView
+              entries={allEntries}
+              projects={allEntries.map(entry => ({
+                id: entry.projectId,
+                name: entry.project
+              }))}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              onEditEntry={() => {}}
+              onDeleteEntry={() => {}}
+            />
+          )}
+
+          {viewMode === 'weekly' && (
+            <WeeklyView
+              entries={allEntries}
+              projects={allEntries.map(entry => ({
+                id: entry.projectId,
+                name: entry.project
+              }))}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              onDayClick={(date) => {
+                setSelectedDate(date);
+                setViewMode('daily');
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default TimesheetPage;
