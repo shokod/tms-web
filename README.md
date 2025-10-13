@@ -94,6 +94,81 @@ If you wish to just develop locally and not deploy to Vercel, [follow the steps 
 
 > Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
 
+### Supabase Schema (run in Supabase SQL editor)
+
+```sql
+-- projects
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  client text not null,
+  budget numeric,
+  status text check (status in ('on-track','behind','at-risk')) default 'on-track',
+  due_date date,
+  created_by uuid references auth.users(id),
+  created_at timestamp with time zone default now()
+);
+
+-- time_entries
+create table if not exists public.time_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) not null,
+  project_id uuid references public.projects(id),
+  project text,
+  invoice text,
+  contact text,
+  email text,
+  date date not null,
+  start_time text,
+  end_time text,
+  break_minutes integer default 0,
+  hours numeric not null,
+  activity text not null,
+  description text,
+  status text check (status in ('draft','pending','approved')) default 'draft',
+  created_at timestamp with time zone default now()
+);
+
+-- timesheets
+create table if not exists public.timesheets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) not null,
+  week_start date not null,
+  status text default 'open',
+  created_at timestamp with time zone default now()
+);
+
+-- profiles (optional mirror of auth.users)
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id),
+  full_name text,
+  email text,
+  avatar text,
+  role text,
+  created_at timestamp with time zone default now()
+);
+
+-- RLS
+alter table public.projects enable row level security;
+alter table public.time_entries enable row level security;
+alter table public.timesheets enable row level security;
+alter table public.profiles enable row level security;
+
+create policy "projects read all" on public.projects for select using (true);
+create policy "projects insert admin only" on public.projects for insert with check (auth.role() = 'authenticated');
+create policy "projects update admin only" on public.projects for update using (auth.role() = 'authenticated');
+
+create policy "time_entries by owner" on public.time_entries for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "timesheets by owner" on public.timesheets for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "profiles read" on public.profiles for select using (true);
+```
+
+After running the SQL, set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY` in `.env.local`.
+
 ## Feedback and issues
 
 Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).

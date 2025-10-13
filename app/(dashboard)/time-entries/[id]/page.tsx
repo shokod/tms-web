@@ -1,9 +1,16 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  generateReadableId, 
+  generateInvoiceNumber, 
+  generateAvatar 
+} from "@/lib/utils/invoice-generator";
+import { getProjectCategory } from "@/lib/utils/category-mapper";
 import { 
   ArrowLeft, 
   Edit2, 
@@ -34,6 +41,7 @@ import {
 
 interface TimesheetEntry {
   id: string;
+  originalId?: string;
   invoice: string;
   contact: string;
   email: string;
@@ -41,7 +49,7 @@ interface TimesheetEntry {
   hours: number;
   activity: string;
   project: string;
-  status: 'approved' | 'pending' | 'rejected';
+  status: 'approved' | 'pending' | 'rejected' | 'draft';
   avatar: string;
   client: string;
   rate: number;
@@ -55,28 +63,10 @@ interface TimesheetEntry {
 }
 
 const TimesheetEntryDetail: React.FC = () => {
-  const [entry] = useState<TimesheetEntry>({
-    id: "01",
-    invoice: "RSLITE-TN 001 BTA",
-    contact: "Delvin Shoko",
-    email: "john@company.com",
-    date: "2024-12-15",
-    hours: 8.0,
-    activity: "User authentication system development - implementing OAuth integration with detailed security protocols and comprehensive testing for production deployment.",
-    project: "Authentication System",
-    status: "approved",
-    avatar: "JS",
-    client: "TechCorp Solutions",
-    rate: 85.00,
-    total: 680.00,
-    category: "Development",
-    tags: ["OAuth", "Security", "Backend"],
-    startTime: "09:00",
-    endTime: "17:00",
-    breakTime: 30,
-    notes: "Completed OAuth 2.0 integration with Google and Microsoft providers. Implemented token refresh logic and comprehensive error handling. All security tests passed successfully."
-  });
-
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [entry, setEntry] = useState<TimesheetEntry | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -84,6 +74,85 @@ const TimesheetEntryDetail: React.FC = () => {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      try {
+        setLoading(true);
+        const id = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : undefined;
+        if (!id) return;
+        const res = await fetch(`/api/time-entries/${id}`, { signal: controller.signal });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error?.message || 'Failed to load entry');
+        
+        // Transform API data to include mock/placeholder fields
+        const apiEntry = json.data;
+        const readableId = generateReadableId(apiEntry.id);
+        const contactName = typeof apiEntry.contact === 'string' ? apiEntry.contact : apiEntry.contact?.name || 'John Smith';
+        
+        const timeDetails = calculateTimeDetails(apiEntry.hours || 8.0);
+        const projectData = typeof apiEntry.project === 'object' ? apiEntry.project : null;
+        const clientName = projectData?.client || 'TechCorp Solutions'; // Use project client or fallback
+        const projectName = typeof apiEntry.project === 'string' ? apiEntry.project : apiEntry.project?.name || 'Authentication System';
+        const category = getProjectCategory(projectName); // Dynamic category based on project name
+        
+        const transformedEntry: TimesheetEntry = {
+          id: readableId, // Display ID
+          originalId: apiEntry.id, // Keep original UUID
+          invoice: generateInvoiceNumber(apiEntry.contact, readableId),
+          contact: contactName,
+          email: typeof apiEntry.email === 'string' ? apiEntry.email : apiEntry.email?.email || 'john@company.com',
+          date: apiEntry.date || '2024-12-15',
+          hours: apiEntry.hours || 8.0,
+          activity: apiEntry.activity || 'User authentication system development - implementing OAuth integration with detailed security protocols and comprehensive testing for production deployment.',
+          project: typeof apiEntry.project === 'string' ? apiEntry.project : apiEntry.project?.name || 'Authentication System',
+          status: typeof apiEntry.status === 'string' ? apiEntry.status : apiEntry.status?.name || apiEntry.status?.status || 'approved',
+          avatar: generateAvatar(apiEntry.contact),
+          client: clientName, // Dynamic from project data
+          rate: 85.00, // Mock data
+          total: (apiEntry.hours || 8.0) * 85.00, // Calculated
+          category: category, // Dynamic category based on project name
+          tags: ['OAuth', 'Security', 'Backend'], // Mock data
+          startTime: timeDetails.startTime,
+          endTime: timeDetails.endTime,
+          breakTime: timeDetails.breakDuration * 60, // Convert to minutes
+          notes: apiEntry.activity || 'Completed OAuth 2.0 integration with Google and Microsoft providers. Implemented token refresh logic and comprehensive error handling. All security tests passed successfully.'
+        };
+        
+        setEntry(transformedEntry);
+      } catch (e: any) {
+        if (e instanceof Error && e.name !== 'AbortError') {
+          setError(e.message);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, []);
+
+
+  const calculateTimeDetails = (hours: number) => {
+    const startTime = '07:00';
+    const breakStart = '12:30';
+    const breakEnd = '13:30';
+    const breakDuration = 1; // 1 hour break
+    
+    // Calculate end time: start + work hours + break duration
+    const startHour = 7; // 07:00
+    const totalTime = startHour + hours + breakDuration;
+    const endTime = `${totalTime.toString().padStart(2, '0')}:30`; // 16:30
+    
+    return {
+      startTime,
+      breakStart,
+      breakEnd,
+      endTime,
+      breakDuration
+    };
+  };
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', { 
@@ -126,6 +195,13 @@ const TimesheetEntryDetail: React.FC = () => {
           border: 'border-red-200',
           dot: 'bg-red-500'
         };
+      case 'draft':
+        return { 
+          bg: 'bg-gray-50', 
+          text: 'text-gray-700', 
+          border: 'border-gray-200',
+          dot: 'bg-gray-500'
+        };
       default: 
         return { 
           bg: 'bg-gray-50', 
@@ -135,6 +211,9 @@ const TimesheetEntryDetail: React.FC = () => {
         };
     }
   };
+
+  if (loading) return <div className="min-h-screen bg-gray-50" />;
+  if (error || !entry) return <div className="min-h-screen bg-gray-50" />;
 
   const statusConfig = getStatusConfig(entry.status);
   const productivity = Math.round((entry.hours / 8) * 100);
@@ -146,7 +225,12 @@ const TimesheetEntryDetail: React.FC = () => {
       <div className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-gray-500 hover:text-gray-900"
+              onClick={() => router.push('/timesheet')}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -271,7 +355,7 @@ const TimesheetEntryDetail: React.FC = () => {
                     <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full mx-auto mb-2">
                       <Clock className="h-4 w-4 text-blue-600" />
                     </div>
-                    <div className="font-semibold text-gray-900">{entry.breakTime}m</div>
+                    <div className="font-semibold text-gray-900">12:30-13:30</div>
                     <div className="text-xs text-gray-500">Break</div>
                   </div>
 
@@ -402,7 +486,7 @@ const TimesheetEntryDetail: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-bold text-gray-900">8h</div>
+                    <div className="text-lg font-bold text-gray-900">{entry.hours}h</div>
                     <div className="text-xs text-gray-500">Duration</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -448,15 +532,6 @@ const TimesheetEntryDetail: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Delete Action */}
-            {/* <Button 
-              variant="outline" 
-              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Delete Entry
-            </Button> */}
           </div>
         </div>
       </div>

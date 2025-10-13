@@ -45,7 +45,7 @@ const TimesheetPage = () => {
     { 
       id: "01",
       invoice: "RSLITE-TN 001 BTA",
-      contact: "John Smith",
+      contact: "Delvin Shoko",
       email: "john@company.com",
       date: "2024-12-15",
       startTime: "09:00",

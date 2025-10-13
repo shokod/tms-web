@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,47 +14,54 @@ import {
   Users
 } from "lucide-react";
 
-const employees = [
-  {
-    id: "1",
-    name: "John Smith",
-    email: "john@company.com",
-    role: "Senior Developer",
-    department: "Engineering",
-    status: "Active",
-    avatar: "JS"
-  },
-  {
-    id: "2",
-    name: "Sarah Johnson",
-    email: "sarah@company.com",
-    role: "Product Manager",
-    department: "Product",
-    status: "Active",
-    avatar: "SJ"
-  },
-  {
-    id: "3",
-    name: "Michael Brown",
-    email: "michael@company.com",
-    role: "UI Designer",
-    department: "Design",
-    status: "Active",
-    avatar: "MB"
-  },
-  {
-    id: "4",
-    name: "Emma Wilson",
-    email: "emma@company.com",
-    role: "QA Engineer",
-    department: "Engineering",
-    status: "Active",
-    avatar: "EW"
-  }
-];
+type EmployeeRow = { id: string; name: string; email: string; role: string; department: string; status: string; avatar: string };
 
 export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Debounce search query to prevent excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadEmployees() {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/employees?limit=50&offset=0&q=${encodeURIComponent(debouncedSearchQuery)}`, { signal: controller.signal });
+        const json = await res.json();
+        if (res.ok) {
+          const data = (json.data || []).map((p: any) => ({
+            id: p.id,
+            name: p.full_name || p.email || 'Unknown',
+            email: p.email || '',
+            role: p.role || 'Member',
+            department: '—',
+            status: 'Active',
+            avatar: (p.full_name ? (p.full_name.split(' ').map((s: string) => s[0]).join('').slice(0,2).toUpperCase()) : 'U')
+          }));
+          setEmployees(data);
+        }
+      } catch (error) {
+        // Only set loading to false if the request wasn't aborted
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error('Failed to fetch employees:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadEmployees();
+    return () => controller.abort();
+  }, [debouncedSearchQuery]);
 
   const filteredEmployees = employees.filter(employee =>
     employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,7 +126,7 @@ export default function EmployeesPage() {
 
             {/* Table Body */}
             <div className="divide-y divide-gray-100">
-              {filteredEmployees.map((employee) => (
+              {(loading ? [] : filteredEmployees).map((employee) => (
                 <Link
                   key={employee.id}
                   href={`/employees/${employee.id}`}

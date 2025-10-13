@@ -1,39 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Plus, Clock, Loader2 } from 'lucide-react';
 import { Calendar } from './ui/calendar';
+import { generateInvoiceNumber } from '@/lib/utils/invoice-generator';
+import { timeEntryFormSchema, type TimeEntryFormData, type TimeEntryFormErrors } from '@/lib/validators/time-entry-form';
 
-interface FormData {
-  invoiceNo: string;
-  contact: string;
-  email: string;
-  hours: string;
-  activity: string;
-  project: string;
-}
-
-interface FormErrors {
-  invoiceNo?: string;
-  contact?: string;
-  email?: string;
-  hours?: string;
-  activity?: string;
-  project?: string;
-  date?: string;
-}
+type ProjectOption = { id: string; name: string };
 
 const AddEntryDialog = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<Omit<TimeEntryFormData, 'date'>>({
     invoiceNo: '',
     contact: '',
     email: '',
@@ -41,41 +25,102 @@ const AddEntryDialog = () => {
     activity: '',
     project: ''
   });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [errors, setErrors] = useState<TimeEntryFormErrors>({});
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
-  const projects = [
-    'Authentication System',
-    'Dashboard Development',
-    'API Integration',
-    'Bug Fixes & Testing',
-    'Client Consultation'
-  ];
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.invoiceNo.trim()) newErrors.invoiceNo = 'Invoice number is required';
-    if (!formData.contact.trim()) newErrors.contact = 'Contact name is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+  // Reset form when dialog opens
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen) {
+      // Reset form data
+      setFormData({
+        invoiceNo: '',
+        contact: '',
+        email: '',
+        hours: '',
+        activity: '',
+        project: ''
+      });
+      setErrors({});
+      setDate(undefined);
+      setSelectedProjectId('');
     }
-    if (!formData.hours) {
-      newErrors.hours = 'Hours are required';
-    } else if (isNaN(Number(formData.hours)) || Number(formData.hours) <= 0) {
-      newErrors.hours = 'Hours must be a positive number';
-    }
-    if (!formData.activity.trim()) newErrors.activity = 'Activity description is required';
-    if (!formData.project) newErrors.project = 'Project selection is required';
-    if (!date) newErrors.date = 'Date is required';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  // Check if form is complete and valid using Zod
+  const isFormValid = useMemo(() => {
+    if (!date) return false;
+    
+    try {
+      const dataToValidate = { ...formData, date };
+      timeEntryFormSchema.parse(dataToValidate);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [formData, date]);
+
+  // Validate form using Zod schema
+  const validateForm = useCallback((): boolean => {
+    if (!date) {
+      setErrors({ date: 'Date is required' });
+      return false;
+    }
+
+    try {
+      const dataToValidate = { ...formData, date };
+      timeEntryFormSchema.parse(dataToValidate);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof Error && 'issues' in error) {
+        const zodError = error as any;
+        const newErrors: TimeEntryFormErrors = {};
+        
+        zodError.issues.forEach((issue: any) => {
+          const field = issue.path[0] as keyof TimeEntryFormData;
+          newErrors[field] = issue.message;
+        });
+        
+        setErrors(newErrors);
+      }
+      return false;
+    }
+  }, [formData, date]);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects?limit=100&offset=0&order=desc&sort=due_date', { signal: controller.signal });
+        const json = await res.json();
+        if (res.ok) {
+          setProjects((json.data || []).map((p: any) => ({ id: p.id, name: p.name })));
+        }
+      } catch {}
+    }
+    loadProjects();
+    const onCreated = () => loadProjects();
+    window.addEventListener('projects:created', onCreated);
+    return () => controller.abort();
+  }, []);
+
+
+  const handleInputChange = (field: keyof Omit<TimeEntryFormData, 'date'>, value: string) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Auto-generate invoice number when contact changes
+      if (field === 'contact' && value.trim()) {
+        // Generate a unique temporary ID based on timestamp and contact
+        const tempId = `temp-${Date.now()}-${value.trim().replace(/\s+/g, '-').toLowerCase()}`;
+        newData.invoiceNo = generateInvoiceNumber(value, tempId);
+      }
+      
+      return newData;
+    });
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
@@ -89,20 +134,40 @@ const AddEntryDialog = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      // Scroll to first error field
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
 
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const entryData = {
-        ...formData,
-        date: date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-        id: String(Math.floor(Math.random() * 1000)).padStart(2, '0')
+      const payload = {
+        invoice: formData.invoiceNo,
+        contact: formData.contact,
+        email: formData.email,
+        date: date ? date.toISOString().split('T')[0] : '',
+        hours: Number(formData.hours),
+        activity: formData.activity,
+        project: formData.project,
+        project_id: selectedProjectId || undefined,
+        status: 'draft' as const
       };
 
-      console.log('New entry:', entryData);
+      const res = await fetch('/api/time-entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error?.message || 'Failed to create entry');
+      }
 
       setFormData({
         invoiceNo: '',
@@ -112,8 +177,14 @@ const AddEntryDialog = () => {
         activity: '',
         project: ''
       });
+      setSelectedProjectId('');
       setDate(undefined);
       setOpen(false);
+      // Optionally trigger a refresh for pages using next/navigation
+      if (typeof window !== 'undefined') {
+        // Soft reload current page to reflect new data
+        window.dispatchEvent(new Event('time-entries:created'));
+      }
 
     } catch (error) {
       console.error('Error creating entry:', error);
@@ -123,7 +194,7 @@ const AddEntryDialog = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" className="bg-red-600 hover:bg-red-700">
           <Plus className="mr-2 h-4 w-4" />
@@ -155,10 +226,10 @@ const AddEntryDialog = () => {
               </Label>
               <Input
                 id="invoiceNo"
-                placeholder="RSLITE-TN 001"
+                placeholder="RSLITE-JS 001"
                 value={formData.invoiceNo}
-                onChange={(e) => handleInputChange('invoiceNo', e.target.value)}
-                className={errors.invoiceNo ? 'border-red-500' : 'border-gray-200'}
+                readOnly
+                className={`${errors.invoiceNo ? 'border-red-500' : 'border-gray-200'} bg-gray-50 cursor-not-allowed`}
               />
               {errors.invoiceNo && (
                 <p className="text-xs text-red-600">{errors.invoiceNo}</p>
@@ -203,7 +274,7 @@ const AddEntryDialog = () => {
               </Label>
               <Input
                 id="contact"
-                placeholder="John Smith"
+                placeholder="Delvin Shoko"
                 value={formData.contact}
                 onChange={(e) => handleInputChange('contact', e.target.value)}
                 className={errors.contact ? 'border-red-500' : 'border-gray-200'}
@@ -255,17 +326,23 @@ const AddEntryDialog = () => {
               <Label htmlFor="project" className="text-sm font-medium text-gray-700">
                 Project
               </Label>
-              <Select
-                value={formData.project}
-                onValueChange={(value) => handleInputChange('project', value)}
+                <Select
+                value={selectedProjectId}
+                onValueChange={(value) => {
+                  setSelectedProjectId(value);
+                  const found = projects.find(p => p.id === value);
+                  if (found) {
+                    handleInputChange('project', found.name);
+                  }
+                }}
               >
                 <SelectTrigger className={errors.project ? 'border-red-500' : 'border-gray-200'}>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project) => (
-                    <SelectItem key={project} value={project}>
-                      {project}
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -306,7 +383,7 @@ const AddEntryDialog = () => {
             <Button
               onClick={handleSubmit}
               className="flex-1 bg-red-600 hover:bg-red-700"
-              disabled={loading}
+              disabled={loading || !isFormValid}
             >
               {loading ? (
                 <>

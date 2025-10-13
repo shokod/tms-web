@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,29 +19,30 @@ import { DashboardMetrics } from './components/DashboardMetrics';
 import { ActiveProjects } from './components/ProjectCards';
 import { TopPerformers, RecentActivities } from './components/EmployeeActivity';
 import AddEntryDialog from "@/components/add-entry-button";
+import AddProjectDialog from "@/components/add-project-button";
 
 const DashboardPage = () => {
   const [mounted, setMounted] = useState(false);
   const [timeRange, setTimeRange] = useState("this_week");
 
-  const [dashboardStats] = useState<DashboardStats>({
-    totalHours: 1247,
-    totalEmployees: 24,
-    activeProjects: 8,
-    pendingApprovals: 15,
-    weeklyEarnings: 89750,
-    productivity: 87,
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalHours: 0,
+    totalEmployees: 0,
+    activeProjects: 0,
+    pendingApprovals: 0,
+    weeklyEarnings: 0,
+    productivity: 0,
     trends: {
-      hours: { value: 1247, change: 8.2 },
-      earnings: { value: 89750, change: 12.5 },
-      productivity: { value: 87, change: -2.1 }
+      hours: { value: 0, change: 0 },
+      earnings: { value: 0, change: 0 },
+      productivity: { value: 0, change: 0 }
     }
   });
 
   const [topEmployees] = useState<Employee[]>([
     {
       id: "emp001",
-      name: "Sarah Chen",
+      name: "Ushindi Chikwasha",
       avatar: "SC",
       role: "Senior Developer",
       hoursThisWeek: 42.5,
@@ -50,7 +51,7 @@ const DashboardPage = () => {
     },
     {
       id: "emp002", 
-      name: "John Smith",
+      name: "Kudzai Chikwasha",
       avatar: "JS",
       role: "UI/UX Designer",
       hoursThisWeek: 38.0,
@@ -68,7 +69,7 @@ const DashboardPage = () => {
     },
     {
       id: "emp004",
-      name: "Emma Davis",
+      name: "Tamuka Chikwasha",
       avatar: "ED",
       role: "Backend Developer", 
       hoursThisWeek: 40.0,
@@ -77,83 +78,62 @@ const DashboardPage = () => {
     }
   ]);
 
-  const [activeProjects] = useState<Project[]>([
-    {
-      id: "proj001",
-      name: "Authentication System",
-      client: "TechCorp Solutions",
-      progress: 85,
-      hoursLogged: 156,
-      budget: 45000,
-      status: "on-track",
-      dueDate: "2024-12-30"
-    },
-    {
-      id: "proj002",
-      name: "Dashboard Redesign", 
-      client: "StartupXYZ",
-      progress: 62,
-      hoursLogged: 89,
-      budget: 28000,
-      status: "behind",
-      dueDate: "2024-12-25"
-    },
-    {
-      id: "proj003",
-      name: "API Integration",
-      client: "Enterprise Co",
-      progress: 94,
-      hoursLogged: 201,
-      budget: 52000,
-      status: "on-track", 
-      dueDate: "2024-12-22"
-    },
-    {
-      id: "proj004",
-      name: "Mobile App",
-      client: "InnovateNow",
-      progress: 38,
-      hoursLogged: 124,
-      budget: 67000,
-      status: "at-risk",
-      dueDate: "2025-01-15"
-    }
-  ]);
+  const [activeProjects, setActiveProjects] = useState<Project[]>([]);
 
-  const [recentActivity] = useState<RecentActivity[]>([
-    {
-      id: "act001",
-      type: "entry_approved",
-      message: "Timesheet entry approved for Authentication System",
-      timestamp: "2 hours ago",
-      user: "Sarah Chen",
-      avatar: "SC"
-    },
-    {
-      id: "act002", 
-      type: "entry_submitted",
-      message: "New timesheet entry submitted for Dashboard Redesign",
-      timestamp: "4 hours ago", 
-      user: "John Smith",
-      avatar: "JS"
-    },
-    {
-      id: "act003",
-      type: "project_updated",
-      message: "Project milestone completed for API Integration",
-      timestamp: "6 hours ago",
-      user: "Mike Johnson", 
-      avatar: "MJ"
-    },
-    {
-      id: "act004",
-      type: "entry_submitted",
-      message: "Overtime entry submitted for Mobile App project",
-      timestamp: "8 hours ago",
-      user: "Emma Davis",
-      avatar: "ED"
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadDashboard() {
+      try {
+        const [projRes, empRes, teRes] = await Promise.all([
+          fetch('/api/projects?limit=8&offset=0&order=desc&sort=due_date', { signal: controller.signal }),
+          fetch('/api/employees?limit=100&offset=0', { signal: controller.signal }),
+          fetch('/api/time-entries?limit=20&offset=0&order=desc&sort=date&status=all', { signal: controller.signal })
+        ]);
+        const [projJson, empJson, teJson] = await Promise.all([projRes.json(), empRes.json(), teRes.json()]);
+        if (projRes.ok) {
+          setActiveProjects((projJson.data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            client: p.client,
+            progress: 0,
+            hoursLogged: 0,
+            budget: Number(p.budget || 0),
+            status: p.status,
+            dueDate: p.due_date || ''
+          })));
+        }
+        const totalEmployees = Array.isArray(empJson.data) ? empJson.data.length : 0;
+        const totalHours = Array.isArray(teJson.data) ? teJson.data.reduce((s: number, e: any) => s + (e.hours || 0), 0) : 0;
+        const pendingApprovals = Array.isArray(teJson.data) ? teJson.data.filter((e: any) => e.status === 'pending').length : 0;
+        setDashboardStats((prev) => ({
+          ...prev,
+          totalEmployees,
+          activeProjects: Array.isArray(projJson.data) ? projJson.data.length : 0,
+          totalHours,
+          pendingApprovals,
+          trends: { ...prev.trends, hours: { value: totalHours, change: 0 } }
+        }));
+        setRecentActivity((teJson.data || []).slice(0, 4).map((e: any, idx: number) => {
+          // Handle both string and object contact values
+          const contactValue = typeof e.contact === 'string' ? e.contact : e.contact?.name || 'User';
+          const statusValue = typeof e.status === 'string' ? e.status : e.status?.name || e.status?.status || '';
+          
+          return {
+            id: String(e.id || idx),
+            type: statusValue === 'approved' ? 'entry_approved' : 'entry_submitted',
+            message: e.activity || 'Timesheet entry',
+            timestamp: '',
+            user: contactValue,
+            avatar: (contactValue ? contactValue.split(' ').map((s: string) => s[0]).join('').slice(0,2).toUpperCase() : 'U')
+          };
+        }));
+      } catch {}
     }
-  ]);
+    loadDashboard();
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -186,6 +166,7 @@ const DashboardPage = () => {
                 Filter
               </Button>
               <AddEntryDialog />
+              <AddProjectDialog />
             </div>
           </div>
         </div>

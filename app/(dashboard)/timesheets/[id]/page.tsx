@@ -7,27 +7,27 @@
 //   ArrowLeft, 
 //   Edit2, 
 //   Copy, 
-//   MoreHorizontal,
-//   Clock, 
-//   User, 
+//   
+//    
+//    
 //   Building2,
 //   DollarSign,
-//   CheckCircle,
+//   
 //   Calendar,
 //   FileText,
-//   Timer,
-//   Play,
-//   Pause,
+//   
+//   
+//   
 //   Save,
 //   Download,
 //   Star,
 //   MessageSquare,
-//   TrendingUp,
-//   Zap,
-//   MapPin,
+//   
+//   
+//   
 //   Mail,
-//   Phone,
-//   Target,
+//   
+//   
 //   BarChart3
 // } from "lucide-react";
 
@@ -57,7 +57,7 @@
 //   const [entry] = useState<TimesheetEntry>({
 //     id: "01",
 //     invoice: "RSLITE-TN 001 BTA",
-//     contact: "John Smith",
+//     contact: "Delvin Shoko",
 //     email: "john@company.com",
 //     date: "2024-12-15",
 //     hours: 8.0,
@@ -473,33 +473,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   ArrowLeft,
   Calendar,
-  Clock, 
-  Building2,
+     Building2,
   DollarSign,
-  CheckCircle,
-  FileText,
-  Timer,
-  Play,
-  Pause,
+    FileText,
   Plus,
   Edit2,
   Download,
-  Filter,
   Search,
-  TrendingUp,
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  MoreHorizontal,
   Eye,
   Trash2,
   Copy,
-  User,
   Mail,
-  Phone,
-  MapPin,
-  Target,
-  BarChart3,
   Zap
 } from "lucide-react";
 
@@ -543,7 +527,7 @@ interface WeeklyData {
 const DetailedTimesheetPage: React.FC = () => {
   const [employee] = useState<Employee>({
     id: "emp001",
-    name: "John Smith",
+    name: "Delvin Shoko",
     email: "john.smith@company.com",
     avatar: "JS",
     role: "Senior Developer",
@@ -552,97 +536,72 @@ const DetailedTimesheetPage: React.FC = () => {
     hourlyRate: 85
   });
 
-  const [selectedWeek, setSelectedWeek] = useState("2024-12-16");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  const [weeklyData] = useState<WeeklyData>({
-    weekOf: "Dec 16, 2024",
-    totalHours: 42.5,
-    targetHours: 40,
-    totalEarnings: 3612.50,
-    productivity: 96,
-    efficiency: 91,
-    entries: [
-      {
-        id: "001",
-        date: "Dec 16",
-        project: "Authentication System",
-        client: "TechCorp Solutions",
-        category: "Development",
-        description: "Implemented OAuth 2.0 integration with Google and Microsoft providers",
-        startTime: "09:00",
-        endTime: "17:30",
-        breakTime: 30,
-        totalHours: 8.0,
-        status: "approved",
-        tags: ["OAuth", "Security", "Backend"],
-        notes: "Completed all security tests successfully"
-      },
-      {
-        id: "002",
-        date: "Dec 17",
-        project: "Dashboard Redesign",
-        client: "StartupXYZ",
-        category: "Design",
-        description: "Created responsive dashboard layouts and component library",
-        startTime: "09:15",
-        endTime: "17:15",
-        breakTime: 45,
-        totalHours: 7.25,
-        status: "pending",
-        tags: ["UI/UX", "React", "Design"],
-        notes: "Waiting for client feedback on color scheme"
-      },
-      {
-        id: "003",
-        date: "Dec 18",
-        project: "API Integration",
-        client: "Enterprise Co",
-        category: "Development",
-        description: "Built REST API endpoints for customer management system",
-        startTime: "08:45",
-        endTime: "17:00",
-        breakTime: 15,
-        totalHours: 8.0,
-        status: "approved",
-        tags: ["API", "Node.js", "Database"]
-      },
-      {
-        id: "004",
-        date: "Dec 19",
-        project: "Authentication System",
-        client: "TechCorp Solutions", 
-        category: "Development",
-        description: "Fixed security vulnerabilities and updated documentation",
-        startTime: "09:00",
-        endTime: "18:00",
-        breakTime: 60,
-        totalHours: 8.0,
-        status: "approved",
-        tags: ["Security", "Documentation", "Testing"]
-      },
-      {
-        id: "005",
-        date: "Dec 20",
-        project: "Dashboard Redesign",
-        client: "StartupXYZ",
-        category: "Development",
-        description: "Implemented responsive components and mobile optimizations",
-        startTime: "09:30",
-        endTime: "20:45",
-        breakTime: 75,
-        totalHours: 11.25,
-        status: "pending",
-        tags: ["Mobile", "Responsive", "React"]
-      }
-    ]
-  });
+  const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadWeekly() {
+      try {
+        setLoading(true);
+        const id = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : undefined;
+        if (!id) return;
+        const res = await fetch(`/api/timesheets/${id}`, { signal: controller.signal });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error?.message || 'Failed to load timesheet');
+
+        const data = json.data;
+        const entries = (data.entries || []).map((e: any) => ({
+          id: e.id,
+          date: e.date,
+          project: e.project,
+          client: '',
+          category: '',
+          description: e.activity || '',
+          startTime: e.start_time || '',
+          endTime: e.end_time || '',
+          breakTime: e.break_minutes || 0,
+          totalHours: e.hours || 0,
+          status: e.status || 'draft',
+          tags: [] as string[],
+          notes: ''
+        }));
+
+        setWeeklyData({
+          weekOf: new Date(data.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          totalHours: data.totalHours || 0,
+          targetHours: data.targetHours || 40,
+          totalEarnings: 0,
+          productivity: data.productivity || 0,
+          efficiency: data.efficiency || 0,
+          entries
+        });
+        setError(null);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadWeekly();
+    return () => controller.abort();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
+  if (error || !weeklyData) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
   const getStatusConfig = (status: string) => {
     switch (status) {

@@ -36,8 +36,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => (
             {project.name}
           </h3>
           <p className="text-sm text-gray-500 mb-2">{project.client}</p>
-          <Badge className={`text-xs px-2 py-1 ${getStatusColor(project.status)}`}>
-            {project.status.replace('-', ' ')}
+          <Badge className={`text-xs px-2 py-1 ${getStatusColor(typeof project.status === 'string' ? project.status : project.status?.name || project.status?.status || 'unknown')}`}>
+            {(typeof project.status === 'string' ? project.status : project.status?.name || project.status?.status || 'unknown').replace('-', ' ')}
           </Badge>
         </div>
         <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
